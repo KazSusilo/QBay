@@ -42,7 +42,6 @@ class UnitTest(unittest.TestCase):
             for line in f:
                 User.register("Bob", "testemail@gmail.com", line)
 
-
     def create_account(self, username, email, password):
         """Create account to verify in test_create_listing functions"""
         # Create account
