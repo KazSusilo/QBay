@@ -15,9 +15,9 @@ ctx.push()
 
 class UnitTest(unittest.TestCase):
     def test_username(self):
-        """ For each line/input/test-case, pass through the 
-        User.register() function as the username parameter to test for 
-        vulnerabilities to SQL Injection
+        """ 
+        For each line/input/test-case, pass through the User.register() 
+        function as the username parameter to test for vulnerabilities
         """
         with open("./qbay_test/Generic_SQLI.txt") as f:
             for line in f:
@@ -25,26 +25,26 @@ class UnitTest(unittest.TestCase):
                               "Pass123!!")
 
     def test_email(self):
-        """ For each line/input/test-case, pass through the 
-        User.register() function as the email parameter to test for 
-        vulnerabilities to SQL Injection
+        """ 
+        For each line/input/test-case, pass through the User.register() 
+        function as the email parameter to test for vulnerabilities
         """
         with open('./qbay_test/Generic_SQLI.txt') as f:
             for line in f:
                 User.register("Bob", line, "Pass123!!")
 
     def test_password(self):
-        """ For each line/input/test-case, pass through the 
-        User.register() function as the password parameter to test for 
-        vulnerabilities to SQL Injection
+        """ 
+        For each line/input/test-case, pass through the User.register() 
+        function as the password parameter to test for vulnerabilities
         """
         with open('./qbay_test/Generic_SQLI.txt') as f:
             for line in f:
                 User.register("Bob", "testemail@gmail.com", line)
 
-    """Create account to verify in test_create_listing functions"""
 
     def create_account(self, username, email, password):
+        """Create account to verify in test_create_listing functions"""
         # Create account
         User.register(username, email, password)
         return User.login(email, password)
@@ -109,60 +109,46 @@ class UnitTest(unittest.TestCase):
                         # Type 2: line is an invalid price
                         assert str(e) == "Invalid Price: " + str(price)
 
-    def test_listing_inject_seller(self):
+    def test_create_listing_seller_injection(self):
         """
-        Attempt to pass in the injection text as plain string to the database
-        Should catch attribute error when trying to parse the object
+        For each line/input/test-case, pass through the Listing.create_listing
+        function as the seller parameter to test for vulnerabilities
         """
-        with app.app_context():
-            db.drop_all()
-            db.create_all()
-
+        account = None
+        title, description, price = "Home x", "This is a lovely place", 10
         with open("./qbay_test/Generic_SQLI.txt") as f:
-            cur = 0
+            i = 1
             for line in f:
-                title = f"Testing title {cur}"
                 try:
-                    Listing.create_listing(title=title,
-                                           description="testing description 1",
-                                           price=10.0,
-                                           owner=line,
-                                           address="101 Kingstreet"
-                                           )
+                    # Parameter changed
+                    title, account, i = "Home " + str(i), line, i + 1
+                    Listing.create_listing(title, description, price, account)
                 except AttributeError as e:
                     # AttributeError e should prints "Invalid attribute: id"
                     # e.name should be the same as the invalid attribute name"
                     assert e.name == 'id'
-                cur += 1
 
-    def test_listing_inject_address(self):
+    def test_create_listing_address_injection(self):
         """
-        Pass in injection string into database.
-        String should be accepted but does not execute code
+        For each line/input/test-case, pass through the Listing.create_listing
+        function as the address parameter to test for vulnerabilities
         """
+        username, email, password = "TestCL5", "testCL5@gmail.com", "Onetwo!"
+        account = self.create_account(username, email, password)
+        title, description, price = "Maison x", "This is a lovely place", 10
+        with open("./qbay_test/Generic_SQLI.txt") as f:
+            i = 0
+            for line in f:
+                # Parameter changed
+                title, address, i = "Maison " + str(i), line, i + 1
+                Listing.create_listing(title, description, price, account, 
+                                       address)
+
+    def initialize_database(self):
+        """Clear database"""
         with app.app_context():
             db.drop_all()
             db.create_all()
-
-        user = User("testUser", "user@example.ca", "Pass123!")
-        user.add_to_database()
-
-        with open("./qbay_test/Generic_SQLI.txt") as f:
-            cur = 0
-            for line in f:
-                title = f"Testing title {cur}"
-                Listing.create_listing(title=title,
-                                       description="testing description 1",
-                                       price=10.0,
-                                       owner=user,
-                                       address=line
-                                       )
-                cur += 1
-    
-    def create_listing_helper(self, title, description, price, owner, address):
-        listing = Listing.create_listing(title, description, price,
-                                         owner, address)
-        return listing
 
     def booking_id_helper(self, buyer_id, owner_id, listing_id, type):
         test_id = -1
@@ -193,39 +179,6 @@ class UnitTest(unittest.TestCase):
                         # Type 2: line is an invalid ID
                         assert str(e) == ("Invalid " + type + " ID: " 
                                           + str(test_id))
-                                          
-    def test_booking_buyer(self):
-        with app.app_context():
-            db.drop_all()
-            db.create_all()
-
-        owner = self.create_account("testUser1", "user@test.ca", "Pass123!")
-        listing = self.create_listing_helper("4 bed 2 bath", 
-                                             "Amazing and comfortable place",
-                                             15.00, owner, "10 King St.")
-        self.booking_id_helper(None, owner.id, listing.id, "Buyer")
-
-    def test_booking_seller(self):
-        with app.app_context():
-            db.drop_all()
-            db.create_all()
-
-        owner = self.create_account("testUser", "user@example.ca", "Pass123!")
-        listing = self.create_listing_helper("4 bed 2 bath", 
-                                             "Amazing and comfortable place",
-                                             15.00, owner, "10 King St.")
-        buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
-
-        self.booking_id_helper(buyer.id, None, listing.id, "Owner")
-
-    def test_booking_listing(self):
-        with app.app_context():
-            db.drop_all()
-            db.create_all()
-
-        owner = self.create_account("testUser", "user@example.ca", "Pass123!")
-        buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
-        self.booking_id_helper(buyer.id, owner.id, None, "Listing")
 
     def booking_date_helper(self, buyer_id, owner_id, listing_id, type):
         start = datetime.strptime("2022-12-01", "%Y-%m-%d")
@@ -249,28 +202,69 @@ class UnitTest(unittest.TestCase):
                     # Type 1: line cannot be converted to datetime string
                     assert str(e) == ("time data " + repr(line) +
                                       " does not match format " + repr(form))
+                                          
+    def test_booking_buyer(self):
+        """
+        For each line/input/test-case, pass through the Booking.book_listing
+        function as the buyer parameter to test for vulnerabilities
+        """
+        self.initialize_database()
+        owner = self.create_account("testUser1", "user@test.ca", "Pass123!")
+        listing = Listing.create_listing("4 bed 2 bath", 
+                                         "Amazing and comfortable place",
+                                         15.00, owner, "10 King St.")
+        self.booking_id_helper(None, owner.id, listing.id, "Buyer")
 
-    def test_booking_start_date(self):
+    def test_booking_seller(self):
+        """
+        For each line/input/test-case, pass through the Booking.book_listing
+        function as the seller parameter to test for vulnerabilities
+        """
         with app.app_context():
             db.drop_all()
             db.create_all()
 
         owner = self.create_account("testUser", "user@example.ca", "Pass123!")
-        listing = self.create_listing_helper("4 bed 2 bath", 
-                                             "Amazing and comfortable place",
-                                             15.00, owner, "10 King St.")
+        listing = Listing.create_listing("4 bed 2 bath", 
+                                         "Amazing and comfortable place",
+                                         15.00, owner, "10 King St.")
+        buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
+
+        self.booking_id_helper(buyer.id, None, listing.id, "Owner")
+
+    def test_booking_listing(self):
+        """
+        For each line/input/test-case, pass through the Booking.book_listing
+        function as the listing parameter to test for vulnerabilities
+        """
+        self.initialize_database()          
+        owner = self.create_account("testUser", "user@example.ca", "Pass123!")
+        buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
+        self.booking_id_helper(buyer.id, owner.id, None, "Listing")
+
+    def test_booking_start_date(self):
+        """
+        For each line/input/test-case, pass through the Booking.book_listing
+        function as the start_date parameter to test for vulnerabilities
+        """
+        self.initialize_database()
+        owner = self.create_account("testUser", "user@example.ca", "Pass123!")
+        listing = Listing.create_listing("4 bed 2 bath", 
+                                         "Amazing and comfortable place",
+                                         15.00, owner, "10 King St.")
         buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
         self.booking_date_helper(buyer.id, owner.id, listing.id, "Start")
 
     def test_booking_end_date(self):
-        with app.app_context():
-            db.drop_all()
-            db.create_all()
-
+        """
+        For each line/input/test-case, pass through the Booking.book_listing
+        function as the end_date parameter to test for vulnerabilities
+        """
+        self.initialize_database()
         owner = self.create_account("testUser", "user@example.ca", "Pass123!")
-        listing = self.create_listing_helper("4 bed 2 bath", 
-                                             "Amazing and comfortable place",
-                                             15.00, owner, "10 King St.")
+        listing = Listing.create_listing("4 bed 2 bath", 
+                                         "Amazing and comfortable place",
+                                         15.00, owner, "10 King St.")
         buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
 
         self.booking_date_helper(buyer.id, owner.id, listing.id, "End")
