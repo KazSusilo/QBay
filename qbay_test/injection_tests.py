@@ -91,14 +91,13 @@ class UnitTest(unittest.TestCase):
         """
         username, email, password = "TestCL3", "testCL3@gmail.com", "Onetwo!"
         account = self.create_account(username, email, password)
-        description, price = "This is a lovely place", 0
+        title, description, price = "House x", "This is a lovely place", 0
         with open('./qbay_test/Generic_SQLI.txt') as f:
+            i = 1
             for line in f:
-                cur = 0
-                title = f"Testing title {cur}"
                 try:
                     # Parameter changed
-                    price = float(line)
+                    title, price, i = "House " + str(i), float(line), i + 1
                     Listing.create_listing(title, description, price, account)
                 except ValueError as e:
                     # Check if error is of type 1 or type 2
@@ -109,7 +108,6 @@ class UnitTest(unittest.TestCase):
                     except AssertionError:
                         # Type 2: line is an invalid price
                         assert str(e) == "Invalid Price: " + str(price)
-                cur += 1
 
     def test_listing_inject_seller(self):
         """
