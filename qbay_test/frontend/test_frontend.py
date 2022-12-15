@@ -727,7 +727,7 @@ class FrontEndTests(BaseCase):
         self.login_helper(email, password)
 
         # Create listing
-        t, d, p = "6 Bed 3 Bath", "This is a lovely place", 100
+        t, d, p = "6 Bed 9 Bath", "This is a lovely place", 100
         a = "101 Palace Place, Suite 330, Boston, MA"
         self.create_listing_helper(t, d, p, a)
 
