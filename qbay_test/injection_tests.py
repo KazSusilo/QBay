@@ -149,121 +149,124 @@ class UnitTest(unittest.TestCase):
             db.drop_all()
             db.create_all()
 
-    def booking_id_helper(self, buyer_id, owner_id, listing_id, type):
-        test_id = -1
-        
+    def booking_helper(self, buyer_id, owner_id, listing_id, type, var):
+        test_id, form = -1, "%Y-%m-%d"
         start = datetime.strptime("2022-12-01", "%Y-%m-%d")
         end = datetime.strptime("2022-12-02", "%Y-%m-%d")
         with open("./qbay_test/Generic_SQLI.txt") as f:
             for line in f:
-                try:
-                    test_id = int(line)
-                    if type == "Owner":
-                        owner_id = test_id
-                    elif type == "Buyer":
-                        buyer_id = test_id
-                    elif type == "Listing":
-                        listing_id = test_id
-                    Booking.book_listing(buyer_id=buyer_id,
-                                         owner_id=owner_id,
-                                         listing_id=listing_id,
-                                         book_start=start,
-                                         book_end=end)
-                except ValueError as e:
+                # Helper for "id" type injection
+                if type == "id":
                     try:
-                        # Type 1: line cannot be converted to int
-                        assert str(e) == ("invalid literal for int() with " +
-                                          "base 10: " + repr(line))
-                    except AssertionError:
-                        # Type 2: line is an invalid ID
-                        assert str(e) == ("Invalid " + type + " ID: " 
-                                          + str(test_id))
-
-    def booking_date_helper(self, buyer_id, owner_id, listing_id, type):
-        start = datetime.strptime("2022-12-01", "%Y-%m-%d")
-        end = datetime.strptime("2022-12-02", "%Y-%m-%d")
-        form = "%Y-%m-%d"
-
-        with open("./qbay_test/Generic_SQLI.txt") as f:
-            for line in f:
-                try:
-                    test = datetime.strptime(line, "%Y-%m-%d")
-                    if type == "Start":
-                        start = test
-                    elif type == "End":
-                        end = test
-                    Booking.book_listing(buyer_id=buyer_id,
-                                         owner_id=owner_id,
-                                         listing_id=listing_id,
-                                         book_start=start,
-                                         book_end=end)
-                except ValueError as e:
-                    # Type 1: line cannot be converted to datetime string
-                    assert str(e) == ("time data " + repr(line) +
-                                      " does not match format " + repr(form))
+                        # Inject on desired var
+                        test_id = int(line)
+                        if var == "Owner":
+                            owner_id = test_id
+                        elif var == "Buyer":
+                            buyer_id = test_id
+                        elif var == "Listing":
+                            listing_id = test_id
+                        Booking.book_listing(buyer_id=buyer_id,
+                                             owner_id=owner_id,
+                                             listing_id=listing_id,
+                                             book_start=start,
+                                             book_end=end)
+                    except ValueError as e:
+                        try:
+                            # Type 1: line cannot be converted to int
+                            assert str(e) == ("invalid literal for int() with " 
+                                              + "base 10: " + repr(line))
+                        except AssertionError:
+                            # Type 2: line is an invalid ID
+                            assert str(e) == ("Invalid " + var + " ID: " + 
+                                              str(test_id))
+                # Helper for "date" type injection
+                elif type == "date":
+                    try:
+                        # Inject on desired var
+                        test = datetime.strptime(line, "%Y-%m-%d")
+                        if var == "Start":
+                            start = test
+                        elif var == "End":
+                            end = test
+                        Booking.book_listing(buyer_id=buyer_id,
+                                             owner_id=owner_id,
+                                             listing_id=listing_id,
+                                             book_start=start,
+                                             book_end=end)
+                    except ValueError as e:
+                        # Type 1: line cannot be converted to datetime string
+                        assert str(e) == ("time data " + repr(line) +
+                                        " does not match format " + repr(form))
                                           
     def test_booking_buyer(self):
         """
         For each line/input/test-case, pass through the Booking.book_listing
         function as the buyer parameter to test for vulnerabilities
         """
+        # Initialize & Set Up
         self.initialize_database()
-        owner = self.create_account("testUser1", "user@test.ca", "Pass123!")
-        listing = Listing.create_listing("4 bed 2 bath", 
-                                         "Amazing and comfortable place",
-                                         15.00, owner, "10 King St.")
-        self.booking_id_helper(None, owner.id, listing.id, "Buyer")
+        owner = self.create_account("Owner", "user@test.ca", "Pass123!")
+        
+        # Create & Book Listing
+        title, description, price = "TBB", "This is a lovely place", 15.00
+        listing = Listing.create_listing(title, description, price, owner)
+        self.booking_helper(None, owner.id, listing.id, "id", "Buyer")
 
     def test_booking_seller(self):
         """
         For each line/input/test-case, pass through the Booking.book_listing
         function as the seller parameter to test for vulnerabilities
         """
-        with app.app_context():
-            db.drop_all()
-            db.create_all()
-
+        # Initialize & Set Up
+        self.initialize_database()
         owner = self.create_account("testUser", "user@example.ca", "Pass123!")
-        listing = Listing.create_listing("4 bed 2 bath", 
-                                         "Amazing and comfortable place",
-                                         15.00, owner, "10 King St.")
         buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
-
-        self.booking_id_helper(buyer.id, None, listing.id, "Owner")
+        
+        # Create & Book Listing
+        title, description, price = "TBS", "This is a lovely place", 15.00
+        listing = Listing.create_listing(title, description, price, owner)
+        self.booking_helper(buyer.id, None, listing.id, "id", "Owner")
 
     def test_booking_listing(self):
         """
         For each line/input/test-case, pass through the Booking.book_listing
         function as the listing parameter to test for vulnerabilities
         """
+        # Initialize & Set Up
         self.initialize_database()          
         owner = self.create_account("testUser", "user@example.ca", "Pass123!")
         buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
-        self.booking_id_helper(buyer.id, owner.id, None, "Listing")
+        
+        # Book Listing
+        self.booking_helper(buyer.id, owner.id, None, "id", "Listing")
 
     def test_booking_start_date(self):
         """
         For each line/input/test-case, pass through the Booking.book_listing
         function as the start_date parameter to test for vulnerabilities
         """
+        # Initialize & Set Up
         self.initialize_database()
         owner = self.create_account("testUser", "user@example.ca", "Pass123!")
-        listing = Listing.create_listing("4 bed 2 bath", 
-                                         "Amazing and comfortable place",
-                                         15.00, owner, "10 King St.")
         buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
-        self.booking_date_helper(buyer.id, owner.id, listing.id, "Start")
+        
+        # Create & Book Listing
+        title, description, price = "TBSD", "This is a lovely place", 15.00
+        listing = Listing.create_listing(title, description, price, owner)
+        self.booking_helper(buyer.id, owner.id, listing.id, "date", "Start")
 
     def test_booking_end_date(self):
         """
         For each line/input/test-case, pass through the Booking.book_listing
         function as the end_date parameter to test for vulnerabilities
         """
+        # Initialize & Set Up
         self.initialize_database()
         owner = self.create_account("testUser", "user@example.ca", "Pass123!")
-        listing = Listing.create_listing("4 bed 2 bath", 
-                                         "Amazing and comfortable place",
-                                         15.00, owner, "10 King St.")
         buyer = self.create_account("testUser2", "user2@test.ca", "Pass123!")
-
-        self.booking_date_helper(buyer.id, owner.id, listing.id, "End")
+        
+        # Create & Book Listing
+        title, description, price = "TBED", "This is a lovely place", 15.00
+        listing = Listing.create_listing(title, description, price, owner)
+        self.booking_helper(buyer.id, owner.id, listing.id, "date", "End")
