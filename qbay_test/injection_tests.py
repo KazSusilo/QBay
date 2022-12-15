@@ -6,7 +6,7 @@ from qbay.booking import Booking
 from datetime import datetime, timedelta
 
 """
-This file defines all SQL Injection Back-end Tests
+This file defines all SQL Injection Tests
 """
 
 ctx = app.app_context()
@@ -197,7 +197,8 @@ class UnitTest(unittest.TestCase):
                     except ValueError as e:
                         # Type 1: line cannot be converted to datetime string
                         assert str(e) == ("time data " + repr(line) +
-                                        " does not match format " + repr(form))
+                                          " does not match format " + 
+                                          repr(form))
                                           
     def test_booking_buyer(self):
         """
