@@ -1,7 +1,6 @@
 import os
 import time
 import pytest
-import tempfile
 import threading
 from werkzeug.serving import make_server
 from qbay.database import app

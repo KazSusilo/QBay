@@ -1,4 +1,5 @@
 import unittest
+
 from qbay.database import app, db
 from qbay.user import User
 from qbay.listing import Listing

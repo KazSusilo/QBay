@@ -1,37 +1,27 @@
-# listing.py
-from enum import Enum, unique
-from typing import List
-from multiprocessing.sharedctypes import Value
+import re
+from qbay import database
 from qbay.user import User
 from qbay.review import Review
-from datetime import datetime, timedelta
-import re
-
-from qbay import database
 from qbay.database import db
+from typing import List
+from datetime import datetime, timedelta
 
 
 class Listing:
     """Object representation of a digital Listing
 
     params:
-    REQUIRED
     - title: Title of listing (string)
     - description: A short description (string)
     - price: The cost of renting the listing (float)
     - date: The last modification date (date)
     - seller: The User associated with the listing (User)
-
-    EXTRA
     - address: The location of the listing (string)
     - reviews: A list of reviews associates with the listing (List[Review])
     """
 
-    """ Initialize digital Listing"""
-
     def __init__(self, title: str = "", description: str = "",
                  price: float = 0.0, owner: User = User(), address: str = ""):
-        # Required
         self._database_obj: database.Listing = None
         self._id = None
         self._title = title
@@ -41,12 +31,9 @@ class Listing:
         self._modified_date: datetime = datetime.now()
         self._seller = owner
         self._booked_dates = None
-
-        # Extra
         self._address: str = address
         self._reviews: List[Review] = []
 
-    # Required
     @property
     def database_obj(self) -> database.Listing:
         """Returns a reference to the database"""
@@ -131,7 +118,6 @@ class Listing:
         self._seller = owner
         self._modified_date = datetime.now()
 
-    # Extra
     @property
     def address(self):
         """Fetches address of Listing"""
