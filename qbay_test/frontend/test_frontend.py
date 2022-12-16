@@ -735,3 +735,29 @@ class FrontEndTests(BaseCase):
         self.booking_helper("2025-01-01", "2025-01-02")
         element, text = "#message", "Owner and buyer are the same!"
         self.assert_helper(element, text, None)
+
+        # Register & Log-in with new account
+        self.open(base_url + "/logout")
+        email, username = "booklisting02@test.com", "Book Listing 02"
+        password = "Onetwo!"
+        self.register_helper(email, username, password)
+        self.login_helper(email, password)
+
+        # Book with same dates 
+        self.booking_helper("2025-01-01", "2025-01-01")
+        text = "Start date is same or after end date!"
+        self.assert_helper(element, text, base_url)
+
+        # Book with start date after end date
+        self.booking_helper("2025-01-02", "2025-01-01")
+        self.assert_helper(element, text, base_url)
+
+        # Book with invalid balance
+        self.booking_helper("2024-12-31", "2025-01-02")
+        text = "Buyer's balance is too low for this booking!"
+        self.assert_helper(element, text, base_url)
+
+        # Book with valid dates & balance
+        self.booking_helper("2025-01-01", "2025-01-02")
+        text = "Booking Successful: 2025-01-01 to 2025-01-02"
+        self.assert_helper(element, text, None)
