@@ -1,14 +1,10 @@
-# listing.py
-from enum import Enum, unique
-from typing import List
-from multiprocessing.sharedctypes import Value
+import re
+from qbay import database
 from qbay.user import User
 from qbay.review import Review
-from datetime import datetime, timedelta
-import re
-
-from qbay import database
 from qbay.database import db
+from typing import List
+from datetime import datetime, timedelta
 
 
 class Listing:

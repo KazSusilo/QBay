@@ -1,8 +1,7 @@
+import pytest
 import unittest
 
 from qbay import database
-from flask import Flask
-from sqlalchemy import exc
 from qbay.user import User
 from qbay.database import app, db
 from qbay.review import Review
@@ -10,7 +9,6 @@ from qbay.listing import Listing
 from qbay.booking import Booking
 from datetime import datetime
 from datetime import datetime, timedelta
-import pytest
 
 
 """
