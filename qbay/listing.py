@@ -1,36 +1,35 @@
-# listing.py
-from enum import Enum, unique
-from typing import List
-from multiprocessing.sharedctypes import Value
+import re
+from qbay import database
 from qbay.user import User
 from qbay.review import Review
-from datetime import datetime, timedelta
-import re
-
-from qbay import database
 from qbay.database import db
+from typing import List
+from datetime import datetime, timedelta
 
 
 class Listing:
-    """Object representation of a digital Listing
+    """
+    Object representation of a digital Listing
 
     params:
     REQUIRED
+    - id: ID of listing (int)
     - title: Title of listing (string)
     - description: A short description (string)
     - price: The cost of renting the listing (float)
-    - date: The last modification date (date)
+    - created_date: The date that the listing was created (date)
+    - mod_date: The last modification date (date)
     - seller: The User associated with the listing (User)
+    - booked_dates: The dates that the listing is booked (List[str])
 
     EXTRA
     - address: The location of the listing (string)
     - reviews: A list of reviews associates with the listing (List[Review])
     """
 
-    """ Initialize digital Listing"""
-
     def __init__(self, title: str = "", description: str = "",
                  price: float = 0.0, owner: User = User(), address: str = ""):
+        """Initialize digital Listing"""
         # Required
         self._database_obj: database.Listing = None
         self._id = None
@@ -74,6 +73,23 @@ class Listing:
         self._title = title
         self._modified_date = datetime.now()
 
+    @staticmethod
+    def valid_title(title):
+        """Determine if a given title is valid """
+        regex = re.compile(
+            r'(^([A-Za-z0-9]([A-Za-z0-9]| ){,78}[A-Za-z0-9])$)|[A-Za-z0-9]')
+        if re.fullmatch(regex, title):
+            with database.app.app_context():
+                exists = database.Listing.query.filter_by(title=title).all()
+            return not len(exists)
+        return False
+
+    def update_title(self, title):
+        """Updates the listing title and pushes changes to database"""
+        self.title = title
+        self.database_obj.title = title
+        db.session.commit()
+
     @property
     def description(self):
         """Fetches description of digital Listing"""
@@ -88,6 +104,18 @@ class Listing:
             raise ValueError(f"Invalid Description: {description}")
         self._description = description
         self._modified_date = datetime.now()
+
+    @staticmethod
+    def valid_description(description, title):
+        """Determine if a given description is valid"""
+        return ((19 < len(description) < 2001)
+                and (len(title) < len(description)))
+    
+    def update_description(self, description):
+        """Updates the listing description and pushes changes to database"""
+        self.description = description
+        self.database_obj.description = description
+        db.session.commit()
 
     @property
     def price(self):
@@ -104,19 +132,37 @@ class Listing:
         self._price = price
         self._modified_date = datetime.now()
 
+    @staticmethod
+    def valid_price(newPrice, oldPrice):
+        """Determine if a given price is valid"""
+        return ((10.00 <= newPrice <= 10000.00) and (oldPrice < newPrice))
+
+    def update_price(self, price):
+        """Updates the listing price and pushes changes to database"""
+        self.price = price
+        self.database_obj.price = price * 100
+        db.session.commit()
+
     @property
     def created_date(self):
-        """Fetches last modification date of digital listing"""
+        """Fetches creation date of digital listing"""
         if self.database_obj:
             self._created_date = self.database_obj.date_created
         return self._created_date.date().isoformat()
 
     @property
     def modified_date(self):
-        """Fetches last date modified"""
+        """Fetches last modification date of digital listing"""
         if self.database_obj:
             self._modified_date = self.database_obj.last_modified_date
         return self._modified_date.date().isoformat()
+
+    @staticmethod
+    def valid_date(mod_date):
+        """Determine if a given last modification date is valid"""
+        min_date = datetime(2021, 1, 2)
+        max_date = datetime(2025, 1, 2)
+        return (min_date < mod_date < max_date)
 
     @property
     def seller(self):
@@ -131,7 +177,62 @@ class Listing:
         self._seller = owner
         self._modified_date = datetime.now()
 
-    # Extra
+    @staticmethod
+    def valid_seller(owner):
+        """Determine if a given owner is valid"""
+        if (owner.id):
+            with database.app.app_context():
+                user = database.User.query.get(owner.id)
+                return ((user is not None) and (user.email != ""))
+        return False
+
+    @property
+    def booked_dates(self) -> 'List[str]':
+        """Fetches list of booked dates"""
+        if self.database_obj:
+            result = database.Dates.query.filter_by(listing_id=self.id).all()
+            booked_dates = [d.date for d in result]
+            return booked_dates
+        return None
+
+    def valid_booking_date(self, booked_dates: List[datetime]):
+        """Check if given booking start and ending dates are valid"""
+        for date in booked_dates:
+            date = date.strftime('%Y-%m-%d')
+            if date in self.booked_dates:
+                raise ValueError("Given dates overlap with existing bookings!")
+        return True
+
+    def add_booking_date(self, booked_dates: List[datetime]):
+        """Adds booked dates to List of bookings"""
+        for date in booked_dates:
+            date_db = database.Dates(date=date.strftime('%Y-%m-%d'),
+                                     listing_id=self.id)
+            with database.app.app_context():
+                db.session.add(date_db)
+                db.session.commit()
+
+    def find_min_booking_date(self):
+        """Fetches first available start date a buyer can book the listing"""
+        booked_dates = sorted(self.booked_dates, 
+                              key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
+        # No bookings yet or earliest booking is after today
+        today = datetime.now().strftime('%Y-%m-%d')
+        if booked_dates == [] or (booked_dates[0] > today):
+            return today
+
+        # Find first available date, found when there's a gap between dates
+        prev_d = datetime.strptime(booked_dates[0], "%Y-%m-%d")
+        curr_d = prev_d
+        for i in range(1, len(booked_dates)):
+            curr_d = datetime.strptime(booked_dates[i], "%Y-%m-%d")
+            if (curr_d - prev_d).days > 1:
+                return (prev_d + timedelta(days=1)).strftime('%Y-%m-%d')
+            prev_d = curr_d
+
+        # No gaps exist, first available date is the day after latest booking
+        return (prev_d + timedelta(days=1)).strftime('%Y-%m-%d')
+
     @property
     def address(self):
         """Fetches address of Listing"""
@@ -143,6 +244,12 @@ class Listing:
         self._address = location
         self._modified_date = datetime.now()
 
+    def update_address(self, address):
+        """Updates the listing address and pushes changes to database"""
+        self.address = address
+        self.database_obj.address = address
+        db.session.commit()
+
     @property
     def reviews(self) -> 'List[Review]':
         """Fetches reviews of Listing"""
@@ -153,34 +260,9 @@ class Listing:
         """Sets reviews of Listing"""
         self._reviews = comments
 
-    @property
-    def booked_dates(self) -> 'List[str]':
-        """Fetches list of booked dates"""
-        if self.database_obj:
-            result = database.Dates.query.filter_by(listing_id=self.id).all()
-            booked_dates = [d.date for d in result]
-            return booked_dates
-        return None
-
     def add_review(self, review: 'Review'):
         """Add reviews to listing"""
         self._reviews.append(review)
-
-    def add_to_database(self):
-        """Adds listing to the database"""
-        listing = database.Listing(title=self.title,
-                                   description=self.description,
-                                   price=self.price * 100,
-                                   owner_id=self.seller.id,
-                                   address=self.address,
-                                   date_created=self.created_date,
-                                   last_modified_date=self.modified_date)
-        with database.app.app_context():
-            db.session.add(listing)
-            db.session.commit()
-            self._database_obj = listing
-            self._modified_date = listing.last_modified_date
-            self._id = listing.id
 
     @staticmethod
     def create_listing(title, description, price, owner, address=""):
@@ -208,72 +290,21 @@ class Listing:
         listing.add_to_database()
         return listing
 
-    @staticmethod
-    def valid_title(title):
-        """Determine if a given title is valid """
-        regex = re.compile(
-            r'(^([A-Za-z0-9]([A-Za-z0-9]| ){,78}[A-Za-z0-9])$)|[A-Za-z0-9]')
-        if re.fullmatch(regex, title):
-            with database.app.app_context():
-                exists = database.Listing.query.filter_by(title=title).all()
-            return not len(exists)
-        return False
-
-    @staticmethod
-    def valid_description(description, title):
-        """Determine if a given description is valid"""
-        return ((19 < len(description) < 2001)
-                and (len(title) < len(description)))
-
-    @staticmethod
-    def valid_price(newPrice, oldPrice):
-        """Determine if a given price is valid"""
-        return ((10.00 <= newPrice <= 10000.00) and (oldPrice < newPrice))
-
-    @staticmethod
-    def valid_date(mod_date):
-        """Determine if a given last modification date is valid"""
-        min_date = datetime(2021, 1, 2)
-        max_date = datetime(2025, 1, 2)
-        return (min_date < mod_date < max_date)
-
-    @staticmethod
-    def valid_seller(owner):
-        """Determine if a given owner is valid"""
-        if (owner.id):
-            with database.app.app_context():
-                user = database.User.query.get(owner.id)
-                return ((user is not None) and (user.email != ""))
-        return False
-    
-    def update_title(self, title):
-        """Updates the listing title and pushes changes to the 
-        database.
-        """
-        self.title = title
-        self.database_obj.title = title
-        db.session.commit()
-
-    def update_description(self, description):
-        """Updates the listing description and pushes changes to the 
-        database.
-        """
-        self.description = description
-        self.database_obj.description = description
-        db.session.commit()
-
-    def update_price(self, price):
-        """ Updates the listing price and pushes changes to the 
-        database.
-        """
-        self.price = price
-        self.database_obj.price = price * 100
-        db.session.commit()
-        
-    def update_address(self, address):
-        self.address = address
-        self.database_obj.address = address
-        db.session.commit()
+    def add_to_database(self):
+        """Adds listing to the database"""
+        listing = database.Listing(title=self.title,
+                                   description=self.description,
+                                   price=self.price * 100,
+                                   owner_id=self.seller.id,
+                                   address=self.address,
+                                   date_created=self.created_date,
+                                   last_modified_date=self.modified_date)
+        with database.app.app_context():
+            db.session.add(listing)
+            db.session.commit()
+            self._database_obj = listing
+            self._modified_date = listing.last_modified_date
+            self._id = listing.id
 
     @staticmethod
     def query_listing(id):
@@ -295,43 +326,3 @@ class Listing:
             listing._database_obj = database_listing
             return listing
         return None
-
-    def add_booking_date(self, booked_dates: List[datetime]):
-        """ Adds booked dates to List of bookings """
-        for date in booked_dates:
-            date_db = database.Dates(date=date.strftime('%Y-%m-%d'),
-                                     listing_id=self.id)
-            with database.app.app_context():
-                db.session.add(date_db)
-                db.session.commit()
-
-    def valid_booking_date(self, booked_dates: List[datetime]):
-        """ Check if given booking start and ending dates are valid """
-        for date in booked_dates:
-            date = date.strftime('%Y-%m-%d')
-            if date in self.booked_dates:
-                raise ValueError("Given dates overlap with existing bookings!")
-        return True
-
-    def find_min_booking_date(self):
-        """ Finds the first available starting date a buyer can book from.
-        Used for front end.
-        """
-        booked_dates = sorted(self.booked_dates, 
-                              key=lambda x: datetime.strptime(x, '%Y-%m-%d'))
-        # No bookings yet or earliest booking is after today
-        today = datetime.now().strftime('%Y-%m-%d')
-        if booked_dates == [] or (booked_dates[0] > today):
-            return today
-
-        # Find first available date, found when there's a gap between dates
-        prev_d = datetime.strptime(booked_dates[0], "%Y-%m-%d")
-        curr_d = prev_d
-        for i in range(1, len(booked_dates)):
-            curr_d = datetime.strptime(booked_dates[i], "%Y-%m-%d")
-            if (curr_d - prev_d).days > 1:
-                return (prev_d + timedelta(days=1)).strftime('%Y-%m-%d')
-            prev_d = curr_d
-
-        # No gaps exist, first available date is the day after latest booking
-        return (prev_d + timedelta(days=1)).strftime('%Y-%m-%d')

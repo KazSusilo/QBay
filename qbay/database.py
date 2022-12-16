@@ -1,16 +1,10 @@
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-
 from sqlalchemy.sql import func
-from sqlalchemy import Column, ForeignKey, Integer, Table
-import sqlalchemy.types
 from sqlalchemy.orm import relationship
 
-import datetime
-
 basedir = os.path.abspath(os.path.dirname(__file__))
-
 app = Flask(__name__)
 db_string = os.getenv('db_string')
 if db_string:

@@ -1,13 +1,8 @@
-# user.py
-import sys
-from typing import TYPE_CHECKING, List
 import re
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import exc, update, delete, insert, select
-
 from qbay import database
 from qbay.database import db
+from sqlalchemy import exc
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from .listing import Listing

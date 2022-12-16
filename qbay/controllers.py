@@ -1,11 +1,9 @@
-from distutils.log import error
-from flask import render_template, request, session, redirect
-from qbay.user import User
-from qbay.listing import Listing
 from qbay import database
+from qbay.user import User
 from qbay.database import app
+from qbay.listing import Listing
 from qbay.booking import Booking
-
+from flask import render_template, request, session, redirect
 from functools import wraps
 
 

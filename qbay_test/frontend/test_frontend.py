@@ -1,6 +1,6 @@
 from seleniumbase import BaseCase
-from qbay.database import app, db
 from qbay.user import User
+from qbay.database import app, db
 from qbay_test.conftest import base_url
 from unittest.mock import patch
 from datetime import datetime

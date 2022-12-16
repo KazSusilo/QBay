@@ -1,12 +1,9 @@
-# booking.py
-from enum import Enum, unique
-from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Union
 from qbay import database
 from qbay.database import db
 from qbay.user import User
 from qbay.listing import Listing
 from sqlalchemy import exc
+from datetime import datetime, timedelta
 
 
 class Booking:
