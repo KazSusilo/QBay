@@ -11,9 +11,6 @@ Along with Python, these are required to run the program:
 ```
 Flask
 Flask-SQLAlchemy
-pytest
-flake8
-seleniumbase
 pymysql
 ```
 To install, run `pip install -r requirements.txt` from the root folder
