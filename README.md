@@ -6,7 +6,7 @@
 ![HomePageLotsListings](https://user-images.githubusercontent.com/97570310/208317875-fbefdadd-2b07-4e6f-b919-fb81211c5db4.png)
 
 
-## Summarry
+## Summary
 QBay is a Web-Application, similar to Airbnb, for Client-to-Client vacation house rentals focused on short-term homestays and experiences. Rewarded with a $100 Sign-Up Bonus, users are able to view and book a variety of listings offered by their fellow users. In addition, users are also able to create their own listings for others to enjoy!
 
 ## Run-Instructions
